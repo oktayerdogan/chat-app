@@ -65,7 +65,7 @@ public class ClientGUI extends JFrame {
         });
 
         try {
-            client.connect("127.0.0.1", 12345);
+            client.connect("10.183.44.86", 12345);
             area.append("Sunucuya baglandi.\n");
         } catch (Exception ex) {
             area.append("Baglanti hatasi: " + ex.getMessage() + "\n");
