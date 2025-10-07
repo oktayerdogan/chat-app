@@ -5,15 +5,36 @@ import javax.swing.*;
 import java.awt.*;
 
 public class ClientGUI extends JFrame {
-    private final ChatClient client = new ChatClient();
+    
+    private final ChatClient client;
+    
     private final JTextArea area = new JTextArea();
     private final JTextField input = new JTextField();
     private final JTextField keyField = new JTextField();
-    private final JComboBox<String> encryptionSelect;
+    
+    private final JComboBox<String> encryptionSelect = new JComboBox<>(new String[]{
+        "AffineCipher", "SezarSifreleme", "SubstitutionCipher", "VigenereCipher"
+    });
 
     private EncryptionAlgorithm selectedAlgorithm;
 
-    public ClientGUI() {
+    public ClientGUI(String serverAddress, int portNumber) {
+
+        this.client = new ChatClient(); 
+        
+        try {
+            client.connect(serverAddress, portNumber); 
+            area.append("Sunucuya baglandi: " + serverAddress + ":" + portNumber + "\n");
+        } catch (Exception ex) {
+            area.append("Baglanti hatasi: " + ex.getMessage() + "\n");
+        }
+        
+        initializeGUI();
+        
+        updateAlgorithm();
+    }
+
+    private void initializeGUI() {
         setTitle("Client (Oya)");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(500, 500);
@@ -22,24 +43,17 @@ public class ClientGUI extends JFrame {
         area.setEditable(false);
         add(new JScrollPane(area), BorderLayout.CENTER);
 
-        // Mesaj ve Key input paneli
         JPanel southPanel = new JPanel(new BorderLayout());
 
-        // Mesaj input
         input.setToolTipText("Mesajinizi buraya yazin");
         southPanel.add(input, BorderLayout.CENTER);
 
-        // Key input
         keyField.setToolTipText("Sifreleme key degerini buraya yazin");
         keyField.setPreferredSize(new Dimension(100, 30));
         southPanel.add(keyField, BorderLayout.EAST);
 
         add(southPanel, BorderLayout.SOUTH);
 
-        // Dropdown paneli
-        encryptionSelect = new JComboBox<>(new String[]{
-                "AffineCipher", "SezarSifreleme", "SubstitutionCipher", "VigenereCipher"
-        });
         add(encryptionSelect, BorderLayout.NORTH);
 
         encryptionSelect.addActionListener(e -> updateAlgorithm());
@@ -50,6 +64,8 @@ public class ClientGUI extends JFrame {
 
             if (!msg.isEmpty()) {
                 try {
+                    updateAlgorithm(); 
+                    
                     if (selectedAlgorithm != null) {
                         String encrypted = selectedAlgorithm.encrypt(msg);
                         client.sendMessage(encrypted);
@@ -63,16 +79,6 @@ public class ClientGUI extends JFrame {
                 }
             }
         });
-
-        try {
-            client.connect("10.183.44.86", 12345);
-            area.append("Sunucuya baglandi.\n");
-        } catch (Exception ex) {
-            area.append("Baglanti hatasi: " + ex.getMessage() + "\n");
-        }
-
-        setVisible(true);
-        updateAlgorithm();
     }
 
     private void updateAlgorithm() {
@@ -100,11 +106,13 @@ public class ClientGUI extends JFrame {
             }
         } catch (Exception e) {
             selectedAlgorithm = null;
-            area.append("Key hatali: " + e.getMessage() + "\n");
+            area.append("Key hatali: " + selected + " -> " + e.getMessage() + "\n");
         }
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(ClientGUI::new);
+    // Mesaj alma olaylarında kullanılmak üzere bir metot ekleyebilirsiniz.
+    public void displayMessage(String sender, String message) {
+        // Alınan şifreli mesajı burada gösterme/çözme mantığı olmalı
+        area.append(sender + ": " + message + "\n");
     }
 }
