@@ -5,7 +5,8 @@ import javax.swing.SwingUtilities;
 public class ChatClientApp {
     
     // Sunucu ve port bilgilerini buraya taşıyoruz
-    private static final String SERVER_IP = "10.183.44.86";
+    // Use localhost by default for local testing. Change to remote IP if needed.
+    private static final String SERVER_IP = "10.239.120.86";
     private static final int PORT = 5000;
 
     public static void main(String[] args) {

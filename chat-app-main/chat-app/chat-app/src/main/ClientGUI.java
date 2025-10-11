@@ -21,16 +21,19 @@ public class ClientGUI extends JFrame {
     public ClientGUI(String serverAddress, int portNumber) {
 
         this.client = new ChatClient(); 
-        
-        try {
-            client.connect(serverAddress, portNumber); 
-            area.append("Sunucuya baglandi: " + serverAddress + ":" + portNumber + "\n");
-        } catch (Exception ex) {
-            area.append("Baglanti hatasi: " + ex.getMessage() + "\n");
-        }
-        
         initializeGUI();
-        
+
+        // Connect in background so EDT is not blocked.
+        new Thread(() -> {
+            try {
+                area.append("Sunucuya baglaniyor: " + serverAddress + ":" + portNumber + "\n");
+                client.connect(serverAddress, portNumber);
+                SwingUtilities.invokeLater(() -> area.append("Sunucuya baglandi: " + serverAddress + ":" + portNumber + "\n"));
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> area.append("Baglanti hatasi: " + ex.getMessage() + "\n"));
+            }
+        }, "Client-Connect-Thread").start();
+
         updateAlgorithm();
     }
 
@@ -60,13 +63,17 @@ public class ClientGUI extends JFrame {
 
         input.addActionListener(e -> {
             String msg = input.getText().trim();
-            String key = keyField.getText().trim();
 
             if (!msg.isEmpty()) {
                 try {
                     updateAlgorithm(); 
                     
                     if (selectedAlgorithm != null) {
+                        if (!client.isConnected()) {
+                            area.append("Hata: Sunucuya bagli degil. Mesaj gonderilemiyor.\n");
+                            return;
+                        }
+
                         String encrypted = selectedAlgorithm.encrypt(msg);
                         client.sendMessage(encrypted);
                         area.append("Ben: " + msg + " (Sifreli: " + encrypted + ")\n");
