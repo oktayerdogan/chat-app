@@ -4,15 +4,14 @@ import java.io.*;
 import java.net.*;
 
 public class ChatClient {
+    public Socket getSocket() {
+        return socket;
+    }
     private Socket socket;
     private PrintWriter out;
 
-    /**
-     * Connect with a small timeout so callers (especially GUIs) don't block indefinitely.
-     */
     public void connect(String host, int port) throws IOException {
         socket = new Socket();
-        // 3000 ms timeout
         socket.connect(new InetSocketAddress(host, port), 3000);
         out = new PrintWriter(socket.getOutputStream(), true);
     }
@@ -30,5 +29,11 @@ public class ChatClient {
 
     public void sendMessage(String message) {
         if (out != null) out.println(message);
+    }
+
+    public void sendFile(String fileName, String mimeType, String base64Data) {
+        if (out != null) {
+            out.println("FILE:" + fileName + ":" + mimeType + ":" + base64Data);
+        }
     }
 }

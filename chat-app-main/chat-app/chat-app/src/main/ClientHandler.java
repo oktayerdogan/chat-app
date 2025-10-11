@@ -6,12 +6,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-// Her istemci bağlantısını yöneten iş parçacığı (thread)
+
 public class ClientHandler extends Thread {
     private final Socket socket;
     private final ChatServer server;
     private PrintWriter writer;
-    private String clientId; // İstemci kimliği
+    private String clientId; 
 
     public ClientHandler(Socket socket, ChatServer server) {
         this.socket = socket;
@@ -26,9 +26,23 @@ public class ClientHandler extends Thread {
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             String clientMessage;
-            
             while ((clientMessage = reader.readLine()) != null) {
-                server.handleIncomingMessage(clientMessage, this);
+                if (clientMessage.startsWith("FILE:")) {
+                    try {
+                        String[] parts = clientMessage.split(":", 4);
+                        if (parts.length == 4) {
+                            String fileName = parts[1];
+                            String mimeType = parts[2];
+                            int size = parts[3].length();
+                            server.getGui().logMessage("[Dosya geldi: " + fileName + ", tip: " + mimeType + ", şifreli boyut: " + size + "]");
+                        }
+                    } catch (Exception ex) {
+                        server.getGui().logMessage("[Dosya log hatası: " + ex.getMessage() + "]");
+                    }
+                    server.broadcast(clientMessage); 
+                } else {
+                    server.handleIncomingMessage(clientMessage, this);
+                }
             }
             
         } catch (IOException e) {
@@ -38,7 +52,6 @@ public class ClientHandler extends Thread {
             try {
                 socket.close();
             } catch (IOException e) {
-                // Kapatma hatası
             }
         }
     }
