@@ -1,6 +1,6 @@
 package main;
 
-import main.encryption.*;
+import main.encryption.*; 
 import javax.swing.*;
 import java.awt.*;
 
@@ -15,16 +15,26 @@ public class ClientGUI extends JFrame {
     private final JButton connectButton = new JButton("Bağlan");
     private final JButton fileButton = new JButton("Dosya Gönder");
 
+    // 🔹 GCDCipher menüye eklendi
     private final JComboBox<String> encryptionSelect = new JComboBox<>(new String[]{
-        "AffineCipher", "SezarSifreleme", "SubstitutionCipher", "VigenereCipher"
+        "Şifresiz Gönder", 
+        "AffineCipher", 
+        "SezarSifreleme", 
+        "SubstitutionCipher", 
+        "VigenereCipher", 
+        "RouteCipher", 
+        "ColumnarTransposition",
+        "PolybiusCipher",
+        "HillCipher",
+        "GCDCipher" // 🔹 Yeni
     });
 
     private EncryptionAlgorithm selectedAlgorithm;
 
     public ClientGUI() {
-        this.client = new ChatClient();
+        this.client = new ChatClient(); 
         initializeGUI();
-        updateAlgorithm();
+        updateAlgorithm(); 
     }
 
     private String guessMimeType(String fileName) {
@@ -52,33 +62,11 @@ public class ClientGUI extends JFrame {
         portField.setPreferredSize(new Dimension(60, 25));
         topPanel.add(portField);
         topPanel.add(connectButton);
-    topPanel.add(encryptionSelect);
-    topPanel.add(fileButton);
-    add(topPanel, BorderLayout.NORTH);
-        fileButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            int result = chooser.showOpenDialog(this);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                java.io.File file = chooser.getSelectedFile();
-                try {
-                    String fileName = file.getName();
-                    String mimeType = guessMimeType(fileName);
-                    byte[] fileBytes = java.nio.file.Files.readAllBytes(file.toPath());
-                    // Şifreleme
-                    updateAlgorithm();
-                    if (selectedAlgorithm == null) {
-                        area.append("Lütfen geçerli bir algoritma ve key girin.\n");
-                        return;
-                    }
-                    String fileText = java.util.Base64.getEncoder().encodeToString(fileBytes);
-                    String encrypted = selectedAlgorithm.encrypt(fileText);
-                    client.sendFile(fileName, mimeType, encrypted);
-                    area.append("Şifreli dosya gönderildi: " + fileName + "\n");
-                } catch (Exception ex) {
-                    area.append("Dosya gönderme hatası: " + ex.getMessage() + "\n");
-                }
-            }
-        });
+        topPanel.add(encryptionSelect);
+        topPanel.add(fileButton);
+        add(topPanel, BorderLayout.NORTH);
+
+        fileButton.addActionListener(e -> sendFile());
 
         JPanel southPanel = new JPanel(new BorderLayout());
         input.setToolTipText("Mesajinizi buraya yazin");
@@ -89,100 +77,142 @@ public class ClientGUI extends JFrame {
         add(southPanel, BorderLayout.SOUTH);
 
         encryptionSelect.addActionListener(e -> updateAlgorithm());
+        connectButton.addActionListener(e -> connectToServer());
+        input.addActionListener(e -> sendMessage());
 
-        connectButton.addActionListener(e -> {
-            String portStr = portField.getText().trim();
-            int port;
+        new Thread(this::receiveMessages, "Client-Receive-Thread").start();
+    }
+
+    private void sendMessage() {
+        String msg = input.getText().trim();
+        if (!msg.isEmpty()) {
             try {
-                port = Integer.parseInt(portStr);
-            } catch (NumberFormatException ex) {
-                area.append("Port numarasi hatali!\n");
-                return;
-            }
-            connectButton.setEnabled(false);
-            area.append("Sunucuya baglaniyor: localhost:" + port + "\n");
-            new Thread(() -> {
-                try {
-                    client.connect("127.0.0.1", port);
-                    SwingUtilities.invokeLater(() -> {
-                        area.append("Sunucuya baglandi: localhost:" + port + "\n");
-                        connectButton.setEnabled(false);
-                    });
-                } catch (Exception ex) {
-                    SwingUtilities.invokeLater(() -> {
-                        area.append("Baglanti hatasi: " + ex.getMessage() + "\n");
-                        connectButton.setEnabled(true);
-                    });
+                updateAlgorithm(); 
+                
+                if (!client.isConnected()) {
+                    area.append("Hata: Sunucuya bagli degil. Mesaj gonderilemiyor.\n");
+                    return;
                 }
-            }, "Client-Connect-Thread").start();
-        });
 
-        input.addActionListener(e -> {
-            String msg = input.getText().trim();
-            if (!msg.isEmpty()) {
-                try {
-                    updateAlgorithm();
-                    if (selectedAlgorithm != null) {
-                        if (!client.isConnected()) {
-                            area.append("Hata: Sunucuya bagli degil. Mesaj gonderilemiyor.\n");
-                            return;
-                        }
-                        String encrypted = selectedAlgorithm.encrypt(msg);
-                        client.sendMessage(encrypted);
-                        area.append("Ben: " + msg + " (Sifreli: " + encrypted + ")\n");
-                        input.setText("");
-                    } else {
-                        area.append("Lutfen gecerli bir algoritma ve key girin.\n");
-                    }
-                } catch (Exception ex) {
-                    area.append("Sifreleme hatasi: " + ex.getMessage() + "\n");
+                String toSend = (selectedAlgorithm != null) ? selectedAlgorithm.encrypt(msg) : msg;
+                client.sendMessage(toSend);
+
+                if (selectedAlgorithm != null) {
+                    area.append("Ben: " + msg + " (Şifreli: " + toSend + ")\n");
+                } else {
+                    area.append("Ben: " + msg + " (Şifresiz gönderildi)\n");
                 }
-            }
-        });
 
-        new Thread(() -> {
+                input.setText("");
+            } catch (Exception ex) {
+                area.append("Mesaj gönderme hatası: " + ex.getMessage() + "\n");
+            }
+        }
+    }
+
+    private void sendFile() {
+        JFileChooser chooser = new JFileChooser();
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = chooser.getSelectedFile();
             try {
-                java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(client.getSocket().getInputStream()));
-                String line;
-                while ((line = in.readLine()) != null) {
-                    if (line.startsWith("FILE:")) {
-                        String[] parts = line.split(":", 4);
-                        if (parts.length == 4) {
-                            String fileName = parts[1];
-                            String mimeType = parts[2];
-                            String encryptedBase64 = parts[3];
-                            updateAlgorithm();
-                            if (selectedAlgorithm == null) {
-                                area.append("[Dosya geldi ama şifre çözülemedi: algoritma/key eksik]\n");
-                                return;
-                            }
-                            String base64;
-                            try {
-                                base64 = selectedAlgorithm.decrypt(encryptedBase64);
-                            } catch (Exception ex) {
-                                area.append("[Dosya şifresi çözülemedi: " + ex.getMessage() + "]\n");
-                                return;
-                            }
-                            byte[] fileBytes = java.util.Base64.getDecoder().decode(base64);
-                            if (mimeType.startsWith("image/")) {
-                                javax.swing.ImageIcon icon = new javax.swing.ImageIcon(fileBytes);
-                                javax.swing.JLabel imgLabel = new javax.swing.JLabel(icon);
-                                javax.swing.JOptionPane.showMessageDialog(this, imgLabel, "Gelen Fotoğraf: " + fileName, javax.swing.JOptionPane.PLAIN_MESSAGE);
-                                area.append("[Şifreli fotoğraf geldi: " + fileName + "]\n");
-                            } else {
-                                java.nio.file.Path outPath = java.nio.file.Paths.get("gelen_" + fileName);
-                                java.nio.file.Files.write(outPath, fileBytes);
-                                area.append("[Şifreli dosya geldi ve kaydedildi: " + outPath.toString() + "]\n");
-                            }
-                        }
-                    } else {
-                        area.append("[Gelen Mesaj] " + line + "\n");
-                    }
+                String fileName = file.getName();
+                String mimeType = guessMimeType(fileName);
+                byte[] fileBytes = java.nio.file.Files.readAllBytes(file.toPath());
+
+                updateAlgorithm();
+                String fileText = java.util.Base64.getEncoder().encodeToString(fileBytes);
+                String toSend = (selectedAlgorithm != null) ? selectedAlgorithm.encrypt(fileText) : fileText;
+
+                client.sendFile(fileName, mimeType, toSend);
+
+                if (selectedAlgorithm != null) {
+                    area.append("Şifreli dosya gönderildi: " + fileName + "\n");
+                } else {
+                    area.append("Dosya şifresiz gönderildi: " + fileName + "\n");
                 }
             } catch (Exception ex) {
-                area.append("Sunucudan veri okuma hatası: " + ex.getMessage() + "\n");
+                area.append("Dosya gönderme hatası: " + ex.getMessage() + "\n");
             }
-        }, "Client-Receive-Thread").start();
+        }
+    }
+
+    private void connectToServer() {
+        String portStr = portField.getText().trim();
+        int port;
+        try {
+            port = Integer.parseInt(portStr);
+        } catch (NumberFormatException ex) {
+            area.append("Port numarasi hatali!\n");
+            return;
+        }
+        connectButton.setEnabled(false);
+        area.append("Sunucuya baglaniyor: localhost:" + port + "\n");
+        new Thread(() -> {
+            try {
+                client.connect("127.0.0.1", port);
+                SwingUtilities.invokeLater(() -> {
+                    area.append("Sunucuya baglandi: localhost:" + port + "\n");
+                    connectButton.setEnabled(false);
+                });
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> {
+                    area.append("Baglanti hatasi: " + ex.getMessage() + "\n");
+                    connectButton.setEnabled(true);
+                });
+            }
+        }, "Client-Connect-Thread").start();
+    }
+
+    private void receiveMessages() {
+        try {
+            java.io.BufferedReader in = new java.io.BufferedReader(
+                new java.io.InputStreamReader(client.getSocket().getInputStream())
+            );
+            String line;
+            while ((line = in.readLine()) != null) {
+                if (line.startsWith("FILE:")) {
+                    String[] parts = line.split(":", 4);
+                    if (parts.length == 4) {
+                        handleIncomingFile(parts[1], parts[2], parts[3]);
+                    }
+                } else {
+                    area.append("[Gelen Mesaj] " + line + "\n");
+                }
+            }
+        } catch (Exception ex) {
+            area.append("Sunucudan veri okuma hatası: " + ex.getMessage() + "\n");
+        }
+    }
+
+    private void handleIncomingFile(String fileName, String mimeType, String encryptedBase64) {
+        updateAlgorithm();
+        String base64 = encryptedBase64;
+
+        if (selectedAlgorithm != null) {
+            try {
+                base64 = selectedAlgorithm.decrypt(encryptedBase64);
+            } catch (Exception ex) {
+                area.append("[Dosya şifresi çözülemedi: " + ex.getMessage() + "]\n");
+                return;
+            }
+        }
+
+        try {
+            byte[] fileBytes = java.util.Base64.getDecoder().decode(base64);
+            if (mimeType.startsWith("image/")) {
+                javax.swing.ImageIcon icon = new javax.swing.ImageIcon(fileBytes);
+                javax.swing.JLabel imgLabel = new javax.swing.JLabel(icon);
+                javax.swing.JOptionPane.showMessageDialog(this, imgLabel, "Gelen Fotoğraf: " + fileName, javax.swing.JOptionPane.PLAIN_MESSAGE);
+                area.append("[Fotoğraf geldi: " + fileName + "]\n");
+            } else {
+                java.nio.file.Path outPath = java.nio.file.Paths.get("gelen_" + fileName);
+                java.nio.file.Files.write(outPath, fileBytes);
+                area.append("[Dosya geldi ve kaydedildi: " + outPath.toString() + "]\n");
+            }
+        } catch (Exception e) {
+            area.append("Dosya kaydetme hatası: " + e.getMessage() + "\n");
+        }
     }
 
     private void updateAlgorithm() {
@@ -191,6 +221,9 @@ public class ClientGUI extends JFrame {
 
         try {
             switch (selected) {
+                case "Şifresiz Gönder":
+                    selectedAlgorithm = null;
+                    break;
                 case "AffineCipher":
                     if (!key.contains(",")) throw new Exception("Affine icin key formati: a,b");
                     String[] parts = key.split(",");
@@ -202,10 +235,33 @@ public class ClientGUI extends JFrame {
                     selectedAlgorithm = new SezarSifreleme(Integer.parseInt(key));
                     break;
                 case "SubstitutionCipher":
+                    if (key.length() != 26) throw new Exception("Substitution icin key 26 harf olmali");
                     selectedAlgorithm = new SubstitutionCipher(key);
                     break;
                 case "VigenereCipher":
+                    if (key.isEmpty()) throw new Exception("Key boş olamaz");
                     selectedAlgorithm = new VigenereCipher(key);
+                    break;
+                case "RouteCipher":
+                    selectedAlgorithm = new RouteCipher(Integer.parseInt(key));
+                    break;
+                case "ColumnarTransposition":
+                    if (key.isEmpty()) throw new Exception("Key boş olamaz");
+                    selectedAlgorithm = new ColumnarTranspositionCipher(key);
+                    break;
+                case "PolybiusCipher":
+                    selectedAlgorithm = new PolybiusCipher();
+                    break;
+                case "HillCipher":
+                    if (key.isEmpty()) throw new Exception("HillCipher için key boş olamaz");
+                    selectedAlgorithm = new HillCipher(key);
+                    break;
+                case "GCDCipher":
+                    if (!key.contains(",")) throw new Exception("GCD için key formatı: a,b");
+                    String[] gcdParts = key.split(",");
+                    int x = Integer.parseInt(gcdParts[0].trim());
+                    int y = Integer.parseInt(gcdParts[1].trim());
+                    selectedAlgorithm = new GCDCipher(x, y); // 🔹 Güncel
                     break;
             }
         } catch (Exception e) {
