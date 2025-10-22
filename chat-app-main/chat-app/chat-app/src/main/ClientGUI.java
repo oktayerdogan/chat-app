@@ -26,7 +26,7 @@ public class ClientGUI extends JFrame {
         "ColumnarTransposition",
         "PolybiusCipher",
         "HillCipher",
-        "GCDCipher" // 🔹 Yeni
+        "GCDCipher"
     });
 
     private EncryptionAlgorithm selectedAlgorithm;
@@ -215,60 +215,68 @@ public class ClientGUI extends JFrame {
         }
     }
 
+    
     private void updateAlgorithm() {
-        String selected = (String) encryptionSelect.getSelectedItem();
-        String key = keyField.getText().trim();
+    String selected = (String) encryptionSelect.getSelectedItem();
+    String key = keyField.getText().trim();
 
-        try {
-            switch (selected) {
-                case "Şifresiz Gönder":
-                    selectedAlgorithm = null;
-                    break;
-                case "AffineCipher":
-                    if (!key.contains(",")) throw new Exception("Affine icin key formati: a,b");
-                    String[] parts = key.split(",");
-                    int a = Integer.parseInt(parts[0].trim());
-                    int b = Integer.parseInt(parts[1].trim());
-                    selectedAlgorithm = new AffineCipher(a, b);
-                    break;
-                case "SezarSifreleme":
-                    selectedAlgorithm = new SezarSifreleme(Integer.parseInt(key));
-                    break;
-                case "SubstitutionCipher":
-                    if (key.length() != 26) throw new Exception("Substitution icin key 26 harf olmali");
-                    selectedAlgorithm = new SubstitutionCipher(key);
-                    break;
-                case "VigenereCipher":
-                    if (key.isEmpty()) throw new Exception("Key boş olamaz");
-                    selectedAlgorithm = new VigenereCipher(key);
-                    break;
-                case "RouteCipher":
-                    selectedAlgorithm = new RouteCipher(Integer.parseInt(key));
-                    break;
-                case "ColumnarTransposition":
-                    if (key.isEmpty()) throw new Exception("Key boş olamaz");
-                    selectedAlgorithm = new ColumnarTranspositionCipher(key);
-                    break;
-                case "PolybiusCipher":
-                    selectedAlgorithm = new PolybiusCipher();
-                    break;
-                case "HillCipher":
-                    if (key.isEmpty()) throw new Exception("HillCipher için key boş olamaz");
-                    selectedAlgorithm = new HillCipher(key);
-                    break;
-                case "GCDCipher":
-                    if (!key.contains(",")) throw new Exception("GCD için key formatı: a,b");
-                    String[] gcdParts = key.split(",");
-                    int x = Integer.parseInt(gcdParts[0].trim());
-                    int y = Integer.parseInt(gcdParts[1].trim());
-                    selectedAlgorithm = new GCDCipher(x, y); // 🔹 Güncel
-                    break;
-            }
-        } catch (Exception e) {
-            selectedAlgorithm = null;
-            area.append("Key hatali: " + selected + " -> " + e.getMessage() + "\n");
+    try {
+        switch (selected) {
+            case "Şifresiz Gönder":
+                selectedAlgorithm = null;
+                break;
+            case "AffineCipher":
+                if (!key.contains(",")) throw new Exception("Affine için key formatı: a,b");
+                String[] parts = key.split(",");
+                int a = Integer.parseInt(parts[0].trim());
+                int b = Integer.parseInt(parts[1].trim());
+                selectedAlgorithm = new AffineCipher(a, b);
+                break;
+            case "SezarSifreleme":
+                if (key.isEmpty()) throw new Exception("Sezar için key boş olamaz");
+                selectedAlgorithm = new SezarSifreleme(Integer.parseInt(key));
+                break;
+            case "SubstitutionCipher":
+                if (key.length() != 26) throw new Exception("Substitution için key 26 harf olmalı");
+                selectedAlgorithm = new SubstitutionCipher(key);
+                break;
+            case "VigenereCipher":
+                if (key.isEmpty()) throw new Exception("Vigenere için key boş olamaz");
+                selectedAlgorithm = new VigenereCipher(key);
+                break;
+            case "RouteCipher":
+                if (key.isEmpty()) throw new Exception("RouteCipher için key boş olamaz");
+                selectedAlgorithm = new RouteCipher(Integer.parseInt(key));
+                break;
+            case "ColumnarTransposition":
+                if (key.isEmpty()) throw new Exception("ColumnarTransposition için key boş olamaz");
+                selectedAlgorithm = new ColumnarTranspositionCipher(key);
+                break;
+            case "PolybiusCipher":
+                selectedAlgorithm = new PolybiusCipher();
+                break;
+            case "HillCipher":
+                if (key.isEmpty()) throw new Exception("HillCipher için key boş olamaz");
+                selectedAlgorithm = new HillCipher(key);
+                break;
+            case "GCDCipher":
+                if (!key.contains(",")) throw new Exception("GCD için key formatı: a,b");
+                String[] gcdParts = key.split(",");
+                if (gcdParts.length != 2) throw new Exception("GCD key iki sayıdan oluşmalı: a,b");
+                int x = Integer.parseInt(gcdParts[0].trim());
+                int y = Integer.parseInt(gcdParts[1].trim());
+                selectedAlgorithm = new GCDCipher(x, y);
+                break;
+            default:
+                selectedAlgorithm = null;
+                break;
         }
+    } catch (Exception e) {
+        selectedAlgorithm = null;
+        area.append("Key hatalı: " + selected + " -> " + e.getMessage() + "\n");
     }
+}
+
 
     public void displayMessage(String sender, String message) {
         area.append(sender + ": " + message + "\n");

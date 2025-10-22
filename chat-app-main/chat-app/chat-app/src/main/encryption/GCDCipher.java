@@ -12,16 +12,40 @@ public class GCDCipher implements EncryptionAlgorithm {
 
     @Override
     public String encrypt(String text) {
-        // GCD hesapla
         int gcd = computeGCD(a, b);
-        // Mesajla birlikte göster
-        return "GCD(" + a + ", " + b + ") = " + gcd + " → Mesaj: " + text;
+        StringBuilder encrypted = new StringBuilder();
+
+        for (char c : text.toCharArray()) {
+            if (Character.isLetter(c)) {
+                char base = Character.isUpperCase(c) ? 'A' : 'a';
+                // Harfi gcd kadar kaydır, mod 26
+                char shifted = (char) ((c - base + gcd) % 26 + base);
+                encrypted.append(shifted);
+            } else {
+                encrypted.append(c); // harf değilse olduğu gibi ekle
+            }
+        }
+
+        return "GCD(" + a + ", " + b + ") = " + gcd + " → Şifreli Mesaj: " + encrypted.toString();
     }
 
     @Override
     public String decrypt(String text) {
-        // GCD algoritması ters çevrilemez
-        return "GCD algoritması ters çevrilemez: " + text;
+        int gcd = computeGCD(a, b);
+        StringBuilder decrypted = new StringBuilder();
+
+        for (char c : text.toCharArray()) {
+            if (Character.isLetter(c)) {
+                char base = Character.isUpperCase(c) ? 'A' : 'a';
+                // Ters kaydır
+                char shifted = (char) ((c - base - gcd + 26) % 26 + base);
+                decrypted.append(shifted);
+            } else {
+                decrypted.append(c);
+            }
+        }
+
+        return "GCD(" + a + ", " + b + ") = " + gcd + " → Çözülmüş Mesaj: " + decrypted.toString();
     }
 
     // Öklid algoritması
