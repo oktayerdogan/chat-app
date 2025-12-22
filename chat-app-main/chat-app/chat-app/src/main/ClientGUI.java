@@ -31,6 +31,13 @@ public class ClientGUI extends JFrame {
 
     private final JComboBox<String> encryptionSelect = new JComboBox<>(new String[] {
             "Şifresiz Gönder",
+            "--- AES/DES/RSA ---",
+            "AES (Kütüphaneli)",
+            "AES (Manuel)",
+            "DES (Kütüphaneli)",
+            "DES (Manuel)",
+            "RSA",
+            "--- Klasik ---",
             "AffineCipher",
             "SezarSifreleme",
             "SubstitutionCipher",
@@ -447,7 +454,32 @@ public class ClientGUI extends JFrame {
         try {
             switch (selected) {
                 case "Şifresiz Gönder":
+                case "--- AES/DES/RSA ---":
+                case "--- Klasik ---":
                     selectedAlgorithm = null;
+                    break;
+                case "AES (Kütüphaneli)":
+                    if (key.isEmpty())
+                        key = "AES_DEFAULT_KEY!";
+                    selectedAlgorithm = new AESCipher(key);
+                    break;
+                case "AES (Manuel)":
+                    if (key.isEmpty())
+                        key = "MAES_DEFAULT_KEY";
+                    selectedAlgorithm = new ManualAES(key);
+                    break;
+                case "DES (Kütüphaneli)":
+                    if (key.isEmpty())
+                        key = "DES_KEY!";
+                    selectedAlgorithm = new DESCipher(key);
+                    break;
+                case "DES (Manuel)":
+                    if (key.isEmpty())
+                        key = "MDES_KEY";
+                    selectedAlgorithm = new ManualDES(key);
+                    break;
+                case "RSA":
+                    selectedAlgorithm = new RSACipher();
                     break;
                 case "AffineCipher":
                     if (!key.contains(","))
